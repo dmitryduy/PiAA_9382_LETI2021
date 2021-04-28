@@ -5,6 +5,7 @@ bool IS_SHOW_INTERMEDIATE_RESULTS = false;
 //array of names of squares
 const char namesOfSquares[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8','9', 'a', 'b', 'c', 'd', 'e', 'i', 'f'};
 
+//class of square
 class Square {
 public:
     int posX, posY, width;
@@ -17,9 +18,10 @@ public:
     }
 };
 
+//class of desk
 class Desk {
 public:
-    int minSquares = 9999999;
+    int minSquares = -1;
     int currentSquare = 1;
     std::stack<Square> minArrayOfSquare;
     std::stack<Square> arrayOfSquares;
@@ -29,19 +31,22 @@ public:
 Square findMaxSquare(int k , int x, int y, int** matrix) {
     int width = 0;
     int startWith;
-
+    // set max coords
     if (x > y) startWith = x;
     else startWith = y;
-
+    //looking for maximum width of square
     for (int i = startWith; i < k; i++) {
         if (matrix[x + width][y + width] == 0 && matrix[x + width][y] == 0 && matrix[x][y + width] == 0) {
             width++;
-        } else break;
+        } else {
+            break;
+        }
     }
     return {x, y, width};
 }
 
 void fillMatrix(int** matrix, Square square, Desk* desk) {
+    //update desk by new square
     for (int i = square.posX; i < square.posX + square.width; i++) {
         for (int j = square.posY; j < square.posY + square.width; j++) {
             matrix[i][j] = desk->currentSquare;
@@ -51,17 +56,54 @@ void fillMatrix(int** matrix, Square square, Desk* desk) {
 }
 
 void backtracking(int k , int** matrix, Desk* desk, bool specialCase=false) {
+        if (IS_SHOW_INTERMEDIATE_RESULTS) {
+            //print desk
+            std::cout<<"New desk\n";
+            for (int i = 0; i < k; i++) {
+                for (int j = 0; j < k; j++) {
+                    std::cout<<matrix[i][j]<<" ";
+                }
+                std::cout<<"\n";
+            }
+            std::cout<<"\n";
+        }
         for (int i = 0; i < k; i++) {
             for (int j = 0; j < k; j++) {
+                // increment count of operations
                 desk->countOfOperation++;
-                if (matrix[i][j] != 0) continue;
+                // if ceil isn't empty than skip it
+                if (matrix[i][j] != 0) {
+                    continue;
+                }
                 // if current count of squares more than previous count
-                if (desk->currentSquare >= desk->minSquares) return;
-
+                if (desk->currentSquare >= desk->minSquares && desk->minSquares != -1) {
+                    if (IS_SHOW_INTERMEDIATE_RESULTS) {
+                        std::cout<<"Current count of square greater than previous, that's why this desk will be update\n\n";
+                    }
+                    return;
+                }
+                //create new max square which can fit at position (i,j)
                 Square square = findMaxSquare(k, i, j, matrix);
-                if (specialCase) desk->minArrayOfSquare.push(square);
-                else desk->arrayOfSquares.push(square);
+                // if k multiple of 2, 3 of 5
+                if (specialCase) {
+                    desk->minArrayOfSquare.push(square);
+                }
+                else {
+                    desk->arrayOfSquares.push(square);
+                }
+                // fill new square
                 fillMatrix(matrix, square, desk);
+                if (IS_SHOW_INTERMEDIATE_RESULTS) {
+                    std::cout<<"Square with coords ("<<i+1<<";"<<j+1<<") has width "<<square.width<<" was set in desk\n";
+                    //print desk
+                    for (int i = 0; i < k; i++) {
+                        for (int j = 0; j < k; j++) {
+                            std::cout<<matrix[i][j]<<" ";
+                        }
+                        std::cout<<"\n";
+                    }
+                    std::cout<<"\n";
+                }
             }
         }
 
@@ -69,8 +111,11 @@ void backtracking(int k , int** matrix, Desk* desk, bool specialCase=false) {
 }
 
 bool decreaseSquare(int k , int **matrix, Desk* desk) {
+    if (IS_SHOW_INTERMEDIATE_RESULTS) {
+        std::cout<<"Start remove squares\n";
+    }
     // change minimum count of squares
-    if (desk->currentSquare < desk->minSquares) {
+    if (desk->currentSquare < desk->minSquares || desk->minSquares == -1) {
         desk->minArrayOfSquare = desk->arrayOfSquares;
         desk->minSquares = desk->currentSquare;
     }
@@ -80,20 +125,49 @@ bool decreaseSquare(int k , int **matrix, Desk* desk) {
         desk->countOfOperation++;
         Square top = desk->arrayOfSquares.top();
         matrix[top.posX][top.posY] = 0;
+        if (IS_SHOW_INTERMEDIATE_RESULTS) {
+            std::cout<<"Square with coords ("<<top.posX+1<<";"<<top.posY+1<<") has width "<<top.width<<" was removed\n";
+            //print desk
+            std::cout<<"Current desk\n";
+            for (int i = 0; i < k; i++) {
+                for (int j = 0; j < k; j++) {
+                    std::cout<<matrix[i][j]<<" ";
+                }
+                std::cout<<"\n";
+            }
+            std::cout<<"\n";
+        }
         desk->arrayOfSquares.pop();
         desk->currentSquare--;
     }
 
 
     Square top = desk->arrayOfSquares.top();
-
-    if (top.isMain) return true;
+    // end of backtracking
+    if (top.isMain) {
+        return true;
+    }
     // decrease square side by 1
     for (int i = 0; i < top.width; i++) {
         desk->countOfOperation++;
         matrix[top.posX + i][top.posY + top.width - 1] = 0;
         matrix[top.posX + top.width - 1][top.posY + i] = 0;
+
+
     }
+    if (IS_SHOW_INTERMEDIATE_RESULTS) {
+        std::cout<<"Square with coords ("<<top.posX+1<<";"<<top.posY+1<<") has width "<<top.width<<" was decrement width\n";
+        //print desk
+        std::cout<<"Current desk\n";
+        for (int i = 0; i < k; i++) {
+            for (int j = 0; j < k; j++) {
+                std::cout<<matrix[i][j]<<" ";
+            }
+            std::cout<<"\n";
+        }
+        std::cout<<"\n";
+    }
+    //decrement width of square
     desk->arrayOfSquares.top().width--;
     return false;
 
@@ -104,6 +178,7 @@ void printOptimalDesk(int** matrix, std::stack<Square> squares) {
     // print intermediate results
     if (IS_SHOW_INTERMEDIATE_RESULTS) {
         int numberOfSquare = 1;
+        //print desk
         while (!squares.empty()) {
             Square top = squares.top();
             for (int i = top.posX; i < top.posX + top.width; i++) {
@@ -119,10 +194,9 @@ void printOptimalDesk(int** matrix, std::stack<Square> squares) {
     else {
         int count = squares.size();
         std::cout<<count<<std::endl;
-
+        //print coords of squares
         while (!squares.empty()) {
-                std::cout<<squares.top().posX + 1<<" "<<squares.top().posY + 1<<" "<<squares.top().width<<std::endl;
-
+            std::cout<<squares.top().posX + 1<<" "<<squares.top().posY + 1<<" "<<squares.top().width<<std::endl;
             squares.pop();
         }
     }
@@ -168,25 +242,17 @@ void prepare(int k, int**matrix) {
         fillMatrix(matrix, squareMin1, &desk);
         desk.arrayOfSquares.push(squareMin2);
         fillMatrix(matrix, squareMin2, &desk);
-
+        //enumeration of all options
         while (true) {
             backtracking(k, matrix, &desk);
-            if (IS_SHOW_INTERMEDIATE_RESULTS) {
-                std::cout<<"--------------------------\n";
-                for (int i = 0; i < k; i++) {
-                    for (int j = 0; j < k; j++) {
-                        std::cout<<matrix[i][j]<<" ";
-                    }
-                    std::cout<<"\n";
-                }
-                std::cout<<"--------------------------\n";
+            if(decreaseSquare(k, matrix, &desk)) {
+                break;
             }
-            if(decreaseSquare(k, matrix, &desk)) break;
         }
     }
 
 
-
+    //print result
     printOptimalDesk(matrix, desk.minArrayOfSquare);
     // print desk if IS_SHOW_INTERMEDIATE_RESULTS = true
     if (IS_SHOW_INTERMEDIATE_RESULTS) {
@@ -220,7 +286,7 @@ int main() {
             matrix[i][j] = 0;
         }
     }
-
+    //start backtracking
     prepare(k, matrix);
 
     //free mem
