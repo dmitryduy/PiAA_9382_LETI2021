@@ -1,0 +1,14 @@
+Для проверки жадного алгоритма зайти на https://replit.com/@CvhxDcvh/lab2-GreedyAlgo#main.py
+Для проверки А* зайти на https://replit.com/@CvhxDcvh/a#main.py
+
+Пример входных данных:
+a g
+a b 3.0
+a c 1.0
+b d 2.0
+b e 3.0
+d e 4.0
+e a 3.0
+e f 2.0
+a g 8.0
+f g 1.0
