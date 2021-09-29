@@ -1,90 +1,133 @@
-class Graph:
-    graph = {}
+import math
 
-    def __init__(self, start_v, end_v):
-        self.start = start_v  # start vertex
-        self.end = end_v  # end vertex
-        self.path = start_v  # path
 
-    def add_edge(self, source, dist, weight):
-        # if source vertex hasn't in graph than create this vertex otherwise add new edge to this vertex
-        if source in self.graph.keys():
-            self.graph[source].append([dist, float(weight)])
-        else:
-            self.graph[source] = [[dist, float(weight)]]
+def sort_edges(vertexes, end):
+    print('--- Sorting edges---')
 
-    def sort_edge(self):
+    for vertex in vertexes:
+        if not vertexes[vertex]:
+            print(f'Vertex "{vertex}" has not edges')
+            continue
+        print(f'Sorting vertex "{vertex}"')
+        print('Before sorting')
+        for edges in vertexes[vertex]:
+            print(f"{vertex} -> {edges[0]} = {edges[1]}")
+            # sorting edges
+        vertexes[vertex] = sorted(vertexes[vertex], key=lambda item: abs(ord(item[0]) - ord(end)) + item[1])
+        print('After sorting')
+        for edges in vertexes[vertex]:
+            print(f"{vertex} -> {edges[0]} = {edges[1]}")
 
-        print('--- Sorting edges ---')
-        for vertex in self.graph:
-            print(f'Vertex {vertex} sorting')
-            print('Before sorting:')
-            for item in self.graph[vertex]:
-                print(f'{vertex} -> {item[0]} = {item[1]}')
-            self.graph[vertex] = sorted(self.graph[vertex], key=lambda k: k[1])  # sorting edges by weight
-            print('After Sorting:')
-            for item in self.graph[vertex]:
-                print(f'{vertex} -> {item[0]} = {item[1]}')
+
+def h(vertex, end):
+    # found Heuristic estimate of vertex to end vertex
+    return abs(ord(vertex) - ord(end))
+
+
+def print_anti_priorities(opened, f):
+    print("List of anti Priorities:")
+
+    temp = sorted(opened, key=lambda vertex: f[vertex])
+    print(temp)
+
+
+def min_f(opened, f, g):
+    # found values of Heuristic function
+    minimum = [f[opened[0]], g[opened[0]][0], opened[0]]
+    for vertex in opened:
+        if f[vertex] == minimum[0] and minimum[0] - minimum[1] > f[vertex] - g[vertex][0]:
+            minimum = [f[vertex], g[vertex][0], vertex]
+        elif f[vertex] < minimum[0]:
+            minimum = [f[vertex], g[vertex][0], vertex]
+    return minimum[2]
+
+
+def a_star(start, end, vertexes):
+    fromed = {}  # found paths
+    closed = []  # closed queue
+    opened = [start]  # opened queue
+    # costs of path from start vertex to current vertex
+    g = {
+        start: [0, None]
+    }
+    # values of Heuristic function
+    f = {
+        start: g[start][0] + h(start, end)
+    }
+
+    while opened:
+        print_anti_priorities(opened, f)
+        print(f'Opened queue: ')
+        for item in opened:
+            print(item, end=' ')
         print('\n')
-
-    def print_path(self):
-        print('Result: ', self.path)
-
-    def draw_path(self):
-
-        while self.path[-1] != self.end:
-            start_vertex = self.graph[self.start]
-            print(f"For vertex '{self.start}' there is edges:")
-            for vertex in start_vertex:
-                print(f"{vertex[0]} with weight: {vertex[1]}")
-            i = -1
-            for edges in start_vertex:
-
-                i += 1
-                if i == len(start_vertex) - 1 and len(edges) == 3:
-                    self.path = self.path[0: -1]
-                    self.start = self.path[-1]
-                    print(f" Path changed. Current path: {self.path}")
-                    break
-                if len(edges) == 3:
-                    continue
-
-                print(f"Go to '{edges[0]}'")
-                self.graph[self.start][i].append(1)  # add 1 as this vertex was visited
-                if edges[0] == self.end:  # if current vertex equal end vertex then path was found. break logo
-                    print(f"Next vertex '{edges[0]}' equals to end vertex. Path was found")
-                    self.path += edges[0]
-                    break
-                if edges[0] not in self.graph.keys():  # if current vertex haven't edges then break algo
-                    print(f"Vertex '{edges[0]}' haven't edges. Algorithm was returned to the previous step")
-                    break
-                # add new vertex to path
-                self.path += edges[0]
-                self.start = edges[0]
-                print(f"Vertex '{edges[0]} was writed to the path. Current path: {self.path}")
-                print('\n')
-                break
-
-
-start, end = input().split(' ')
-
-graph = Graph(start, end)  # create graph
-
-while True:
-    try:
-        edge = input()
-        if len(edge) == 0:
+        # found minimum value of Heuristic function between vertexes in opened queue
+        current = min_f(opened, f, g)
+        if current == end:
+            print(f'Path was found')
             break
-    except EOFError:  # end of line error exception
-        break
-    edge = edge.split(' ')
-    graph.add_edge(edge[0], edge[1], edge[2])  # add edges to graph
+        # remove from opened queue and add to closed queue
+        opened.remove(current)
+        closed.append(current)
+        print(f'Remove vertex {current} from opened queue')
+        # if vertex hasn't edges
+        if current not in vertexes:
+            print(f'Vertex "{current}" has not edges')
+            continue
+        # iterating over neighbors of current vertex
+        for neighbor in vertexes[current]:
+            print(f'Looking path {current} -> {neighbor[0]} = {neighbor[1]}')
+            # found costs of price to neighbor
+            temp_g = g[current][0] + neighbor[1]
+            print(f'Path(g) to vertex {neighbor[0]} equals {temp_g}')
+            if neighbor[0] in closed and temp_g >= g[neighbor[0]][0]:
+                print(f'Vertex {neighbor[0]} was already visited from other vertex')
+                continue
+            # add new vertex to g(x) and f(x) functions
+            if neighbor[0] not in closed or temp_g < g[neighbor[0]][0]:
+                fromed[neighbor[0]] = current
+                g[neighbor[0]] = [temp_g, current]
+                print(f'Add vertex {neighbor[0]} with g = {temp_g} to weight of paths g(x) ')
+                f[neighbor[0]] = g[neighbor[0]][0] + h(neighbor[0], end)
+                print(f'Heuristic of vertex {neighbor[0]} is {h(neighbor[0], end)}')
+            # add vertex to opened queue
+            if neighbor[0] not in opened:
+                print(f"Add vertex {neighbor[0]} to opened queue")
+                opened.append(neighbor[0])
 
-# sorting edge
-graph.sort_edge()
+    vertex = fromed[end]
+    path = end + vertex
+    # print result
+    while vertex != start:
+        vertex = fromed[vertex]
+        path += vertex
+    print(path[::-1])
 
-# found path
-graph.draw_path()
 
-# print path
-graph.print_path()
+def main():
+    start, end = input().split(' ')
+
+    # dict of vertexes
+    vertexes = {
+        start: [],
+        end: []
+    }
+
+    while True:
+        try:
+            edge = input()
+            if len(edge) == 0:
+                break
+        except EOFError:  # end of line error exception
+            break
+        edge = edge.split(' ')
+        if edge[0] in vertexes:
+            vertexes[edge[0]].append([edge[1], float(edge[2])])
+        else:
+            vertexes[edge[0]] = [[edge[1], float(edge[2])]]
+    sort_edges(vertexes, end)
+
+    a_star(start, end, vertexes)
+
+
+main()
