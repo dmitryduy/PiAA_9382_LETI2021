@@ -1,133 +1,142 @@
+import math
+
+
 class Vertex:
+    visited = False  # visited or not
+    vertex_from = [None, 0]  # from vertex vertex_from[0] with weight vertex_from[1]
 
     def __init__(self, name):
         self.name = name
-        self.edges = []
+        self.edges = {}  # list of neighbours
 
 
 class Graph:
-    vertexes = {}
-    max_flow = 0
-    flows = []
-    visited_vertexes = []
+    vertexes = {}  # dict of vertexes
     source = None
     sunk = None
+    flow = 0
 
     def add_edge(self, name_from, name_to, weight):
         if name_from in self.vertexes.keys():
-            self.vertexes[name_from].edges.append([name_to, weight, 0, 1])
+
+            self.vertexes[name_from].edges[name_to] = [weight, 0, 1]
         else:
+
             self.vertexes[name_from] = Vertex(name_from)
-            self.vertexes[name_from].edges.append([name_to, weight, 0, 1])
+            self.vertexes[name_from].edges[name_to] = [weight, 0, 1]
         if name_to in self.vertexes.keys():
-            self.vertexes[name_to].edges.append([name_from, weight, 0, -1])
+
+            self.vertexes[name_to].edges[name_from] = [0, 0, -1]
         else:
+
             self.vertexes[name_to] = Vertex(name_to)
-            self.vertexes[name_to].edges.append([name_from, weight, 0, -1])
+            self.vertexes[name_to].edges[name_from] = [0, 0, -1]
+
+
+# sorted vertex by alphabetic order
+def filter_vertexes(vertexes):
+    l = list(vertexes.keys())
+    l.sort()
+    new_v = []
+    for item in l:
+        new_v.append(vertexes[item])
+    return new_v
+
+
+# found minimum flow on path
+def found_min(visited_vertexes, graph):
+    minimum = math.inf
+    minimum_vertex = 'z'
+    previous_vertex = None
+    weight = 0
+    for visit_vertex in visited_vertexes:
+        print(f'Looking vertex {visit_vertex} with edges:')
+        for name, edge in graph.vertexes[visit_vertex].edges.items():
+            print(f'{visit_vertex} -> {name} = {edge[0]}')
+        for name, edge in graph.vertexes[visit_vertex].edges.items():
+            print(f'Looking edge: {visit_vertex} -> {name} = {edge[0]}')
+            if graph.vertexes[name].visited:
+                print(f'Vertex {name} has been already visited. Choosing other edge')
+                continue
+            if (abs(ord(visit_vertex) - ord(name)) < minimum or abs(
+                    ord(visit_vertex) - ord(name)) == minimum and minimum_vertex > name) and edge[0] > 0:
+                print(f'Found new minimum by alphabetic order edge: {visit_vertex} -> {name} = {edge[0]}')
+                previous_vertex = visit_vertex
+                minimum = abs(ord(visit_vertex) - ord(name))
+                minimum_vertex = name
+                weight = edge[0]
+    if minimum == math.inf:
+        return False
+    return [previous_vertex, minimum_vertex, weight]
+
+
+def start_algorithm(graph):
+    visited_vertexes = [graph.source]
+    graph.vertexes[graph.source].visited = True
+    current_vertex = graph.source
+
+    while current_vertex != graph.sunk:
+        print('Array of visited vertexes:')
+        for vertex in visited_vertexes:
+            print(vertex, end=' ')
+        print('\n')
+        edge = found_min(visited_vertexes, graph)
+
+
+        if not edge:
+            return False
+        print('New choosing vertex: ', edge[1])
+        visited_vertexes.append(edge[1])
+        graph.vertexes[edge[1]].visited = True
+        graph.vertexes[edge[1]].vertex_from = [edge[0], edge[2]]
+        current_vertex = edge[1]
+    return True
 
 
 def find_min_flow(graph):
-    print('--- Path was found---\n Path:')
-    weights = []
-    for edge in graph.flows:
-        print(f'{edge[0]}->{edge[1]}[{edge[2]}; {edge[3]}]  ', end=' ')
-        if edge[4] == 1:
-            weights.append(edge[2])
-        else:
-            weights.append(edge[3])
-    print(f'\n Minimum flow in this path: {min(weights)}')
-    return min(weights)
+    min = graph.vertexes[graph.sunk].vertex_from[1]
+    current_vertex = graph.sunk
+    while graph.vertexes[current_vertex].vertex_from[0]:
+        if min > graph.vertexes[current_vertex].vertex_from[1]:
+            min = graph.vertexes[current_vertex].vertex_from[1]
+        current_vertex = graph.vertexes[current_vertex].vertex_from[0]
+    return min
 
 
-def remove_path(graph, min):
-    graph.visited_vertexes = []  # clear visited vertexes
-    print('\n--- Updating flows---')
-    for edge in graph.flows:
+def remove_path(graph, minimum):
+    current_vertex = graph.vertexes[graph.sunk].vertex_from[0]
+    previous_vertex = graph.sunk
+    path = graph.sunk
+    print('Counting max flow on current path')
+    while graph.vertexes[current_vertex].vertex_from[0]:
+        path += current_vertex
+        print(
+            f'Previous weight of edge {previous_vertex} -> {current_vertex} was \
+{graph.vertexes[current_vertex].edges[previous_vertex][0]}. New weight - \
+{graph.vertexes[current_vertex].edges[previous_vertex][0] - minimum}')
+        graph.vertexes[current_vertex].edges[previous_vertex][0] -= minimum
+        graph.vertexes[current_vertex].edges[previous_vertex][1] += minimum
 
-        if edge[4] == 1:
-            for edge_inner in graph.vertexes[edge[0]].edges:
-                if edge_inner[0] == edge[1] and edge_inner[3] == 1:
-                    print(f'Old flow: {edge[0]}->{edge[1]} = [{edge[2]}, {edge[3]}]')
-                    print(f'New flow: {edge[0]}->{edge[1]} = [{edge[2] - min}, {edge[3] + min}]\n')
-                    edge_inner[1] -= min
-                    edge_inner[2] += min
-            for edge_inner_negative in graph.vertexes[edge[1]].edges:
-                if edge_inner_negative[0] == edge[0] and edge_inner_negative[3] == -1:
-                    edge_inner_negative[1] -= min
-                    edge_inner_negative[2] += min
+        graph.vertexes[previous_vertex].edges[current_vertex][0] += minimum
+        graph.vertexes[previous_vertex].edges[current_vertex][1] -= minimum
 
-        if edge[4] == -1:
-            for edge_inner in graph.vertexes[edge[0]].edges:
-                if edge_inner[0] == edge[1] and edge_inner[3] == -1:
-                    print(f'Old flow: {edge[0]}->{edge[1]} = [{edge[2]}, {edge[3]}]')
-                    print(f'New flow: {edge[0]}->{edge[1]} = [{edge[2] + min}, {edge[3] - min}]\n')
-                    edge_inner[1] += min
-                    edge_inner[2] -= min
-            for edge_inner_positive in graph.vertexes[edge[1]].edges:
-                if edge_inner_positive[0] == edge[0] and edge_inner_positive[3] == 1:
-                    edge_inner_positive[1] += min
-                    edge_inner_positive[2] -= min
-    graph.flows = []
+        previous_vertex = current_vertex
+        current_vertex = graph.vertexes[current_vertex].vertex_from[0]
 
-
-def start_algorithm(graph, current_vertex):
-    if current_vertex != graph.sunk:
-        print(f'\nCurrent vertex: "{current_vertex}". Edges:')
-        for edge in graph.vertexes[current_vertex].edges:
-            if edge[3] == 1 and edge[1] != 0:
-                print(f'{current_vertex} -> {edge[0]} = {edge[1]}')
-            elif edge[3] == -1 and edge[2] != 0:
-                print(f'{current_vertex} -> {edge[0]} = {edge[2] * -1}')
-
-    for edge in graph.vertexes[current_vertex].edges:
-        if edge[3] == 1:
-            print(f'View path: {current_vertex}->{edge[0]} = {edge[1]}')
-        elif edge[3] == -1:
-            print(f'View path: {current_vertex}->{edge[0]} = {edge[2] * -1}')
-        if current_vertex == graph.sunk:
-            print('Sunk vertex found')
-            minimum = find_min_flow(graph)  # find minimum flow in current step
-            graph.max_flow += minimum  # add up previous flow and new flow
-            remove_path(graph, minimum)  # clear path and recalculation flows
-            return True
-        if edge[1] > 0 and edge[3] == 1 and edge[0] not in graph.visited_vertexes \
-                or edge[2] > 0 and edge[3] == -1 and edge[0] not in graph.visited_vertexes:
-            print(f'Vertex "{edge[0]}" was added to path')
-            graph.visited_vertexes.append(edge[0])  # add new vertex as visited
-            graph.flows.append([current_vertex, edge[0], edge[1], edge[2], edge[3]])
-            if start_algorithm(graph, edge[0]):
-                return True
-            graph.flows.pop()  # remove last vertex from path
-        else:
-            print('Current path not good\n')
-    return False
+    path += current_vertex
+    print(f'Previous weight of edge {previous_vertex} -> {current_vertex} was \
+{graph.vertexes[current_vertex].edges[previous_vertex][0]}. New weight - \
+{graph.vertexes[current_vertex].edges[previous_vertex][0] - minimum}')
+    graph.vertexes[current_vertex].edges[previous_vertex][0] -= minimum
+    graph.vertexes[current_vertex].edges[previous_vertex][1] += minimum
+    print('Current path:')
+    print(path[::-1])
 
 
-def filter_vertexes(vertexes):
-    print('--- Sorting vertexes---')
-    for vertex in vertexes.values():
-        if not vertex.edges:
-            continue
-        print(f'Sorting vertex {vertex.name}')
-        print('Edges before sorting:')
-        for edge in vertex.edges:
-            if edge[3] == -1:
-                continue
-            print(f'{vertex.name} -> {edge[0]} = {edge[1]}', sep=' ')
-
-        # sorting edges by alphabetic order
-        vertex.edges = sorted(vertex.edges, key=lambda item: abs(ord(item[0]) - ord(vertex.name)))
-
-        for edge in range(0, len(vertex.edges) - 1):
-            if abs(ord(vertex.name) - ord(vertex.edges[edge][0])) == abs(
-                    ord(vertex.name) - ord(vertex.edges[edge + 1][0])) and ord(vertex.edges[edge][0]) > ord(vertex.edges[edge + 1][0]):
-                vertex.edges[edge + 1][0], vertex.edges[edge][0] = vertex.edges[edge][0], vertex.edges[edge + 1][0]
-
-        print('Edges after sorting:')
-        for edge in vertex.edges:
-            if edge[3] == -1:
-                continue
-            print(f'{vertex.name} -> {edge[0]} = {edge[1]}', sep=' ')
+def print_result(graph):
+    for vertex in graph.vertexes:
+        for name, edge in graph.vertexes[vertex].edges.items():
+            print(f'{vertex} {name} {edge[1]}') if edge[1] >= 0 and edge[2] != -1 else None
 
 
 def main():
@@ -144,21 +153,16 @@ def main():
     # filter vertexes
     filter_vertexes(graph.vertexes)
 
-    graph.visited_vertexes.append(graph.source)  # add source as visited vertex
+    while start_algorithm(graph):
+        minimum_flow = find_min_flow(graph)
+        graph.flow += minimum_flow
+        remove_path(graph, minimum_flow)
 
-    while start_algorithm(graph, graph.source):
-        graph.visited_vertexes.append(graph.source)
-
-    print(graph.max_flow)
-    edges = []
-    for vertex in graph.vertexes.values():
-        for edge in vertex.edges:
-            if edge[3] == 1:
-                edges.append([f"{vertex.name}{edge[0]}", edge[2]])
-
-    sorted_edges = sorted(edges, key=lambda item: item[0])
-    for edge in sorted_edges:
-        print(edge[0][0], edge[0][1], edge[1])
+        for vertex in graph.vertexes:
+            graph.vertexes[vertex].vertex_from = [None, 0]
+            graph.vertexes[vertex].visited = False
+    print(graph.flow)
+    print_result(graph)
 
 
 main()
